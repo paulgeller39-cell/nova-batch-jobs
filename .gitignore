@@ -1,0 +1,12 @@
+# Generated / local state — never committed
+bot-backtest/data/
+bot-backtest/results/
+coin-outcomes/data/
+lean/results/
+lean/data/
+lean/storage/
+lean-upstream/
+__pycache__/
+*.pyc
+.env
+.env.*
