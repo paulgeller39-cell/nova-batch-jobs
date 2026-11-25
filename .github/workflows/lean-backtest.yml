@@ -1,0 +1,63 @@
+name: Lean backtest (QuantConnect engine)
+
+# Nova's second backtest engine: QuantConnect Lean (Apache-2.0), run on
+# GitHub's runners with the official quantconnect/lean Docker image used
+# DIRECTLY (the open-source engine route). No QuantConnect account, no
+# lean-cli login, no secrets, no paid data:
+#   - data = the free sample data shipped in the QuantConnect/Lean repo
+#     (sparse checkout of its Data/ folder, crypto included)
+#   - lean/engine-config.json hard-sets the backtesting environment with
+#     live-mode false. Backtests ONLY - there is no live path in this repo.
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  lean-backtest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Fetch Lean sample data (QuantConnect/Lean repo, Data/ only)
+        uses: actions/checkout@v4
+        with:
+          repository: QuantConnect/Lean
+          ref: master
+          path: lean-upstream
+          sparse-checkout: |
+            Data
+
+      - name: Show sample crypto data coverage
+        run: |
+          echo "Crypto sample data shipped in the Lean repo (calibration:"
+          echo "pin the algorithm's SetStartDate/SetEndDate to this coverage):"
+          find lean-upstream/Data/crypto -type f | sort | head -100 || echo "no Data/crypto folder found"
+          du -sh lean-upstream/Data || true
+
+      - name: Run Lean backtest (official engine image)
+        run: |
+          set -e
+          mkdir -p lean/results
+          docker run --rm \
+            --mount type=bind,source="$GITHUB_WORKSPACE/lean/engine-config.json",target=/Lean/Launcher/config.json,readonly \
+            -v "$GITHUB_WORKSPACE/lean/NovaBtcEmaCross:/Algorithm:ro" \
+            -v "$GITHUB_WORKSPACE/lean-upstream/Data:/Data:ro" \
+            -v "$GITHUB_WORKSPACE/lean/results:/Results" \
+            quantconnect/lean:latest \
+            --data-folder /Data \
+            --results-destination-folder /Results \
+            --config /Lean/Launcher/config.json
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lean-backtest-results
+          path: lean/results/
+          if-no-files-found: warn
+          retention-days: 90
