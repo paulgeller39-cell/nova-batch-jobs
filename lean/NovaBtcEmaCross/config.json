@@ -1,0 +1,9 @@
+{
+  "algorithm-type-name": "NovaBtcEmaCross",
+  "algorithm-language": "Python",
+  "algorithm-location": "main.py",
+  "description": "Nova: 10/50 EMA cross on BTCUSD (Coinbase daily), long-only spot, cash account. Backtest only.",
+  "organization-id": "",
+  "parameters": {},
+  "cloud-id": 0
+}
