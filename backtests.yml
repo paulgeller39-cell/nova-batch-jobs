@@ -1,0 +1,52 @@
+name: Nova batch backtests
+
+# Nova's batch factory: runs the bot-strategy backtest suite on GitHub's
+# standard Ubuntu runners (free, no minute cap in public repos) instead of
+# the small agent VM. All data sources are keyless public APIs
+# (GeckoTerminal), so no secrets are needed or used.
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    # Weekly, Mondays 11:17 UTC (~05:17 America/Chicago)
+    - cron: "17 11 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  backtests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r bot-backtest/requirements.txt
+
+      - name: Run backtest suite (25 strategies, fixed 2026-08-24 → 2026-11-24 window)
+        working-directory: bot-backtest
+        run: |
+          set -e
+          python backtest.py
+          python strategies2.py
+          python hunt.py
+          python confluence.py
+          python math1.py
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backtest-results
+          path: |
+            bot-backtest/results/
+            bot-backtest/data/manifest.json
+          if-no-files-found: warn
+          retention-days: 90
